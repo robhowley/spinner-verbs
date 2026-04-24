@@ -1,6 +1,6 @@
 {
   "name": "@robhowley/spinner-verbs",
-  "version": "2.1.2",
+  "version": "3.0.0",
   "description": "Pi extension that replaces boring spinner verbs with themed alternatives that have more personality.",
   "author": "Rob Howley",
   "license": "MIT",
