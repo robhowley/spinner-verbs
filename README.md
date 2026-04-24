@@ -2,32 +2,18 @@
 
 > "Thinking..." is the most boring thing a genius could say.
 
-Customize the text that appears while the LLM is working. Replace the default spinner verbs with something that has a little more personality.
+A [pi](https://pi.dev) extension that customizes the spinner text while the LLM is working. Replace the default spinner verbs with something that has a little more personality.
 
 **Before**: "Thinking...", "Processing...", "Working..." 🥱
 
 **After**: "Paying the iron price...", "With fire and blood..." ⚔️🐉
 
-## Choose Your Integration
+## Installation
 
-- **Using [pi](https://pi.dev)?** → [Pi Integration](#pi-integration)
-- **Using Claude Code?** → [Claude Code Integration](#claude-code-integration)
-- **Browse themes** → [Available Themes](#available-themes)
-
----
-
-## Pi Integration
-
-If you use [pi](https://pi.dev), install this as a pi package directly from GitHub:
+Install directly from npm:
 
 ```shell
 pi install npm:@robhowley/spinner-verbs
-```
-
-Or directly from GitHub:
-
-```shell
-pi install git:github.com/robhowley/spinner-verbs
 ```
 
 That's it. The extension registers automatically and on the next session start will randomly pick a theme for you.
@@ -43,7 +29,7 @@ Change your verb list at any time during a session:
 /verbs (default)
 ```
 
-Run `/verbs` with no argument to get an interactive picker. Use `random` to pick a new random theme, or `(default)` to restore Claude's built-in spinner.
+Run `/verbs` with no argument to get an interactive picker. Use `random` to pick a new random theme, or `(default)` to restore the default spinner.
 
 ### Auto-configure via `settings.json`
 
@@ -90,54 +76,6 @@ Your custom file can be a plain JSON array:
 ```
 
 **Priority order**: `--verbs` CLI flag → project `.pi/settings.json` → global `~/.pi/agent/settings.json`
-
----
-
-## Claude Code Integration
-
-### Quick Start
-
-Install any theme with a single command:
-
-```shell
-curl -sL https://raw.githubusercontent.com/robhowley/spinner-verbs/main/update-spinner-verbs.sh | bash -s game-of-thrones
-```
-
-Replace `game-of-thrones` with any theme name from the [`/spinner-verbs`](./spinner-verbs) directory.
-
-### How It Works
-
-The script will:
-- Download the specified theme
-- Create `.claude/settings.json` if it doesn't exist
-- Merge the spinner verbs into your existing settings
-
-### Manual Installation
-
-Edit your Claude settings file directly:
-
-```
-~/.claude/settings.json            # global
-[project-root]/.claude/settings.json  # project-specific
-```
-
-Add the spinner verbs configuration:
-
-```json
-{
-  "spinnerVerbs": {
-    "mode": "replace",
-    "verbs": [
-      "Paying the iron price...",
-      "What is dead may never die..."
-    ]
-  }
-}
-```
-
-**Modes**:
-- `"replace"` — swap out the defaults entirely
-- `"append"` — add your verbs alongside the defaults
 
 ---
 

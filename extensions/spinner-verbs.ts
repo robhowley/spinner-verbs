@@ -18,8 +18,7 @@ export default function (pi: ExtensionAPI) {
   const validChoices = new Set(availableWithDefault);
 
   function parseVerbsData(data: unknown): string[] | undefined {
-    const verbs = (data as any)?.spinnerVerbs?.verbs ?? data;
-    return Array.isArray(verbs) && verbs.length > 0 ? verbs : undefined;
+    return Array.isArray(data) && data.length > 0 ? data : undefined;
   }
 
   function loadVerbs(name: string): string[] {
