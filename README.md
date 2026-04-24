@@ -87,6 +87,7 @@ Your custom file can be a plain JSON array:
 | `lord-of-the-rings` | One does not simply..., You shall not pass..." So it begins... |
 | `action-movie` | Yippee-ki-yay..., I'll be back..., I know kung fu...          |
 | `game-show` | Come on down..., Survey says..., Is that your final answer... |
+| `corporate-jargon` | Double clicking..., Pressure testing..., Closing the loop... |
 | `doc-emrick` | Shunting..., Sliding..., Fiddling...                          |
 | `momentum` | Making moves..., Spinning up..., Getting traction...          |
 
