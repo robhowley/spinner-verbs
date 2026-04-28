@@ -123,12 +123,6 @@ export default function (pi: ExtensionAPI) {
           verbSetName = named;
         }
       }
-    } "string") {
-        const named = settings.spinnerVerbs;
-        if (named !== RANDOM && available.includes(named)) {
-          verbSetName = named;
-        }
-      }
     }
 
     if (verbs) activate(verbs, verbSetName, ctx);
