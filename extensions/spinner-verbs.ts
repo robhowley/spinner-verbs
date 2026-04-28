@@ -89,6 +89,58 @@ export default function (pi: ExtensionAPI) {
     return undefined;
   }
 
+  function loadVerbsFromSource(source: string | undefined, projectSettings: string, globalSettings: string): { verbs: string[], verbSetName: string | undefined } {
+    // Handle string source (named set or random)
+    if (typeof source === "string") {
+      if (source === RANDOM) {
+        const result = randomVerbs();
+        return { verbs: result.verbs, verbSetName: result.setName };
+      } else if (available.includes(source)) {
+        return { verbs: loadVerbs(source), verbSetName: source };
+      }
+    }
+    
+    // Handle settings-based loading
+    const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
+    if (settings) {
+      const named = settings.spinnerVerbs;
+      if (typeof named === "string") {
+        if (named === RANDOM) {
+          const result = randomVerbs();
+          return { verbs: result.verbs, verbSetName: result.setName };
+        } else if (available.includes(named)) {
+          return { verbs: loadVerbs(named), verbSetName: named };
+        }
+      }
+      
+      // Handle custom file
+      const filePath = settings.spinnerVerbsFile;
+      if (typeof filePath === "string") {
+        const resolved = resolveFilePath(filePath, projectSettings);
+        if (existsSync(resolved)) {
+          try {
+            const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
+            if (fileVerbs) {
+              return { verbs: fileVerbs, verbSetName: undefined };
+            }
+          } catch {}
+        }
+      }
+    }
+    
+    return { verbs: undefined, verbSetName: undefined };
+  }
+
+  function resolveFilePath(filePath: string, projectSettings: string): string {
+    if (filePath.startsWith("~")) {
+      return join(homedir(), filePath.slice(1));
+    } else if (filePath.startsWith("/")) {
+      return filePath;
+    } else {
+      return join(dirname(projectSettings), filePath);
+    }
+  }
+
   pi.on("session_start", async (_event, ctx) => {
     const flag = pi.getFlag("--verbs") as string;
     const projectSettings = join(ctx.cwd, ".pi", "settings.json");
@@ -97,58 +149,15 @@ export default function (pi: ExtensionAPI) {
     let verbs: string[] | undefined;
     let verbSetName: string | undefined;
 
-    if (flag && flag !== DEFAULT) {
-      if (flag === RANDOM) {
-        const result = randomVerbs();
-        verbs = result.verbs;
-        verbSetName = result.setName;
-      }
-      else if (available.includes(flag)) {
-        verbs = loadVerbs(flag);
-        verbSetName = flag;
-      }
-    }
-
-    // Handle loading from settings   
-    const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
-    if (settings) {
-      const named = settings.spinnerVerbs;
-      if (typeof named === "string") {
-        if (named === RANDOM) {
-          const result = randomVerbs();
-          verbs = result.verbs;
-          verbSetName = result.setName;
-        } else if (available.includes(named)) {
-          verbs = loadVerbs(named);
-          verbSetName = named;
-        }
-      }
-      
-      // Also check for custom file if no named verb set
-      if (!verbs) {
-        const filePath = settings.spinnerVerbsFile;
-        if (typeof filePath === "string") {
-          const resolved = filePath.startsWith("~")
-            ? join(homedir(), filePath.slice(1))
-            : filePath.startsWith("/")
-            ? filePath
-            : join(dirname(projectSettings), filePath);
-          if (existsSync(resolved)) {
-            try {
-              const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
-              if (fileVerbs) {
-                verbs = fileVerbs;
-                // For custom files, we don't track a specific name
-              }
-            } catch {}
-          }
-        }
-      }
-    }
+    // Load from flag or settings using centralized function
+    const result = loadVerbsFromSource(flag, projectSettings, globalSettings);
+    verbs = result.verbs;
+    verbSetName = result.verbSetName;
 
     // Fallback to project settings if no flag and no settings verbs
     if (!verbs) {
-      verbs = resolveVerbs(projectSettings);
+      const fallbackResult = loadVerbsFromSource(undefined, projectSettings, globalSettings);
+      verbs = fallbackResult.verbs;
       // No verbSetName for fallback case
     }
 
