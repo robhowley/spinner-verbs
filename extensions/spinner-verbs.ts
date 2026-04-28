@@ -28,9 +28,9 @@ export default function (pi: ExtensionAPI) {
     return verbs;
   }
 
-  function randomVerbs(): string[] {
+  function randomVerbs(): { verbs: string[], setName: string } {
     const name = available[Math.floor(Math.random() * available.length)];
-    return loadVerbs(name);
+    return { verbs: loadVerbs(name), setName: name };
   }
 
   pi.registerFlag("verbs", {
@@ -99,9 +99,9 @@ export default function (pi: ExtensionAPI) {
 
     if (flag && flag !== DEFAULT) {
       if (flag === RANDOM) {
-        verbs = randomVerbs();
-        // For random selection, don't set verbSetName so it shows as "Unknown" in status
-        // The actual set will be determined when randomVerbs() is called
+        const result = randomVerbs();
+        verbs = result.verbs;
+        verbSetName = result.setName;
       }
       else if (available.includes(flag)) {
         verbs = loadVerbs(flag);
@@ -119,7 +119,9 @@ export default function (pi: ExtensionAPI) {
       if (settings && typeof settings.spinnerVerbs === "string") {
         const named = settings.spinnerVerbs;
         if (named === RANDOM) {
-          // For random selection, don't set verbSetName so it shows as "Unknown" in status
+          // For random selection, we should get the actual set name that was selected
+          const result = randomVerbs();
+          verbSetName = result.setName;
         } else if (available.includes(named)) {
           verbSetName = named;
         }
@@ -150,8 +152,8 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage();
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
-        const verbs = randomVerbs();
-        activate(verbs, "random", ctx);
+        const result = randomVerbs();
+        activate(result.verbs, result.setName, ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
         const verbs = loadVerbs(choice);
