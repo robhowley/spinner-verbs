@@ -56,7 +56,8 @@ export default function (pi: ExtensionAPI) {
     if (!existsSync(settingsPath)) return undefined;
     try {
       return JSON.parse(readFileSync(settingsPath, "utf-8"));
-    } catch {
+    } catch (error) {
+      console.error(`Failed to parse settings from ${settingsPath}:`, error);
       return undefined;
     }
   }
@@ -82,14 +83,17 @@ export default function (pi: ExtensionAPI) {
         try {
           const verbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
           if (verbs) return verbs;
-        } catch {}
+        } catch (error) {
+          console.error(`Failed to parse verbs from file ${resolved}:`, error);
+          return undefined;
+        }
       }
     }
 
     return undefined;
   }
 
-  function loadVerbsFromSource(source: string | undefined, projectSettings: string, globalSettings: string): { verbs: string[], verbSetName: string | undefined } {
+  function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
     // Handle string source (named set or random)
     if (typeof source === "string") {
       if (source === RANDOM) {
@@ -101,7 +105,7 @@ export default function (pi: ExtensionAPI) {
     }
     
     // Handle settings-based loading
-    const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
+    const settings = projectSettings && globalSettings ? readSettings(projectSettings) ?? readSettings(globalSettings) : undefined;
     if (settings) {
       const named = settings.spinnerVerbs;
       if (typeof named === "string") {
@@ -116,14 +120,17 @@ export default function (pi: ExtensionAPI) {
       // Handle custom file
       const filePath = settings.spinnerVerbsFile;
       if (typeof filePath === "string") {
-        const resolved = resolveFilePath(filePath, projectSettings);
+        const resolved = resolveFilePath(filePath, projectSettings || "");
         if (existsSync(resolved)) {
           try {
             const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
             if (fileVerbs) {
               return { verbs: fileVerbs, verbSetName: undefined };
             }
-          } catch {}
+          } catch (error) {
+            console.error(`Failed to parse verbs from file ${resolved}:`, error);
+            return { verbs: undefined, verbSetName: undefined };
+          }
         }
       }
     }
@@ -185,11 +192,12 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage();
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
-        const result = loadVerbsFromSource(choice, "", "");
+        const result = loadVerbsFromSource(choice, undefined, undefined);
         activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
-        const result = loadVerbsFromSource(choice, "", "");
+        // For direct verb selection, we don't have settings context so we'll use undefined
+        const result = loadVerbsFromSource(choice, undefined, undefined);
         activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
