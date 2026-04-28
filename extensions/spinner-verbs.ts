@@ -105,7 +105,18 @@ export default function (pi: ExtensionAPI) {
     }
     
     // Handle settings-based loading
-    const settings = projectSettings && globalSettings ? readSettings(projectSettings) ?? readSettings(globalSettings) : undefined;
+    let settings: Record<string, unknown> | undefined;
+    
+    // Try project settings first
+    if (projectSettings) {
+      settings = readSettings(projectSettings);
+    }
+    
+    // If no project settings, try global settings
+    if (!settings && globalSettings) {
+      settings = readSettings(globalSettings);
+    }
+    
     if (settings) {
       const named = settings.spinnerVerbs;
       if (typeof named === "string") {
