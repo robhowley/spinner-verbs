@@ -129,7 +129,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    const flag = pi.getFlag("--verbs") as string;
+    const flag = pi.getFlag("verbs") as string;
     const projectSettings = join(ctx.cwd, ".pi", "settings.json");
     const globalSettings = join(homedir(), ".pi", "agent", "settings.json");
 
