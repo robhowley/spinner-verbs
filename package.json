@@ -28,13 +28,5 @@
     "extensions": [
       "./extensions"
     ]
-  },
-  "scripts": {
-    "test": "vitest",
-    "test:watch": "vitest --watch"
-  },
-  "devDependencies": {
-    "vitest": "^0.34.0",
-    "@types/node": "^20.0.0"
   }
 }
