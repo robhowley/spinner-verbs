@@ -64,46 +64,16 @@ export default function (pi: ExtensionAPI) {
 
   function getSpinnerVerbsValue(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): unknown {
   // Coalesce: flag -> project settings -> global settings
-  // Check if project settings exist and contain spinnerVerbs key
-  let projectSpinnerVerbs = undefined;
-  if (projectSettings) {
-    const projectSettingsObj = readSettings(projectSettings);
-    if (projectSettingsObj && projectSettingsObj.hasOwnProperty("spinnerVerbs")) {
-      projectSpinnerVerbs = projectSettingsObj.spinnerVerbs;
-    }
-  }
-  
-  // Check if global settings exist and contain spinnerVerbs key
-  let globalSpinnerVerbs = undefined;
-  if (globalSettings) {
-    const globalSettingsObj = readSettings(globalSettings);
-    if (globalSettingsObj && globalSettingsObj.hasOwnProperty("spinnerVerbs")) {
-      globalSpinnerVerbs = globalSettingsObj.spinnerVerbs;
-    }
-  }
+  const projectSpinnerVerbs = projectSettings ? readSettings(projectSettings)?.spinnerVerbs : undefined;
+  const globalSpinnerVerbs = globalSettings ? readSettings(globalSettings)?.spinnerVerbs : undefined;
   
   return source ?? projectSpinnerVerbs ?? globalSpinnerVerbs;
 }
 
 function getSpinnerVerbsFileValue(projectSettings: string | undefined, globalSettings: string | undefined): string | undefined {
   // Coalesce: project settings -> global settings
-  // Check if project settings exist and contain spinnerVerbsFile key
-  let projectSpinnerVerbsFile = undefined;
-  if (projectSettings) {
-    const projectSettingsObj = readSettings(projectSettings);
-    if (projectSettingsObj && projectSettingsObj.hasOwnProperty("spinnerVerbsFile")) {
-      projectSpinnerVerbsFile = projectSettingsObj.spinnerVerbsFile;
-    }
-  }
-  
-  // Check if global settings exist and contain spinnerVerbsFile key
-  let globalSpinnerVerbsFile = undefined;
-  if (globalSettings) {
-    const globalSettingsObj = readSettings(globalSettings);
-    if (globalSettingsObj && globalSettingsObj.hasOwnProperty("spinnerVerbsFile")) {
-      globalSpinnerVerbsFile = globalSettingsObj.spinnerVerbsFile;
-    }
-  }
+  const projectSpinnerVerbsFile = projectSettings ? readSettings(projectSettings)?.spinnerVerbsFile : undefined;
+  const globalSpinnerVerbsFile = globalSettings ? readSettings(globalSettings)?.spinnerVerbsFile : undefined;
   
   return projectSpinnerVerbsFile ?? globalSpinnerVerbsFile;
 }
