@@ -36,7 +36,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerFlag("verbs", {
     description: `Spinner verb list (${available.join(", ")})`,
     type: "string",
-    default: DEFAULT,
+    default: undefined,
   });
 
   let interval: ReturnType<typeof setInterval> | undefined;
@@ -62,7 +62,53 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
+  function getSpinnerVerbsValue(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): unknown {
+  // Coalesce: flag -> project settings -> global settings
+  // Check if project settings exist and contain spinnerVerbs key
+  let projectSpinnerVerbs = undefined;
+  if (projectSettings) {
+    const projectSettingsObj = readSettings(projectSettings);
+    if (projectSettingsObj && projectSettingsObj.hasOwnProperty("spinnerVerbs")) {
+      projectSpinnerVerbs = projectSettingsObj.spinnerVerbs;
+    }
+  }
+  
+  // Check if global settings exist and contain spinnerVerbs key
+  let globalSpinnerVerbs = undefined;
+  if (globalSettings) {
+    const globalSettingsObj = readSettings(globalSettings);
+    if (globalSettingsObj && globalSettingsObj.hasOwnProperty("spinnerVerbs")) {
+      globalSpinnerVerbs = globalSettingsObj.spinnerVerbs;
+    }
+  }
+  
+  return source ?? projectSpinnerVerbs ?? globalSpinnerVerbs;
+}
+
+function getSpinnerVerbsFileValue(projectSettings: string | undefined, globalSettings: string | undefined): string | undefined {
+  // Coalesce: project settings -> global settings
+  // Check if project settings exist and contain spinnerVerbsFile key
+  let projectSpinnerVerbsFile = undefined;
+  if (projectSettings) {
+    const projectSettingsObj = readSettings(projectSettings);
+    if (projectSettingsObj && projectSettingsObj.hasOwnProperty("spinnerVerbsFile")) {
+      projectSpinnerVerbsFile = projectSettingsObj.spinnerVerbsFile;
+    }
+  }
+  
+  // Check if global settings exist and contain spinnerVerbsFile key
+  let globalSpinnerVerbsFile = undefined;
+  if (globalSettings) {
+    const globalSettingsObj = readSettings(globalSettings);
+    if (globalSettingsObj && globalSettingsObj.hasOwnProperty("spinnerVerbsFile")) {
+      globalSpinnerVerbsFile = globalSettingsObj.spinnerVerbsFile;
+    }
+  }
+  
+  return projectSpinnerVerbsFile ?? globalSpinnerVerbsFile;
+}
+
+function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
     // Handle string source (named set or random)
     if (typeof source === "string") {
       if (source === RANDOM) {
@@ -73,44 +119,32 @@ export default function (pi: ExtensionAPI) {
       }
     }
     
-    // Handle settings-based loading
-    let settings: Record<string, unknown> | undefined;
+    // Get the spinnerVerbs value from coalesced sources
+    const spinnerVerbsValue = getSpinnerVerbsValue(source, projectSettings, globalSettings);
     
-    // Try project settings first
-    if (projectSettings) {
-      settings = readSettings(projectSettings);
-    }
-    
-    // If no project settings, try global settings
-    if (!settings && globalSettings) {
-      settings = readSettings(globalSettings);
-    }
-    
-    if (settings) {
-      const named = settings.spinnerVerbs;
-      if (typeof named === "string") {
-        if (named === RANDOM) {
-          const result = randomVerbs();
-          return { verbs: result.verbs, verbSetName: result.setName };
-        } else if (available.includes(named)) {
-          return { verbs: loadVerbs(named), verbSetName: named };
-        }
+    if (typeof spinnerVerbsValue === "string") {
+      if (spinnerVerbsValue === RANDOM) {
+        const result = randomVerbs();
+        return { verbs: result.verbs, verbSetName: result.setName };
+      } else if (available.includes(spinnerVerbsValue)) {
+        return { verbs: loadVerbs(spinnerVerbsValue), verbSetName: spinnerVerbsValue };
       }
-      
-      // Handle custom file
-      const filePath = settings.spinnerVerbsFile;
-      if (typeof filePath === "string") {
-        const resolved = resolveFilePath(filePath, projectSettings || "");
-        if (existsSync(resolved)) {
-          try {
-            const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
-            if (fileVerbs) {
-              return { verbs: fileVerbs, verbSetName: undefined };
-            }
-          } catch (error) {
-            console.error(`Failed to parse verbs from file ${resolved}:`, error);
-            return { verbs: undefined, verbSetName: undefined };
+    }
+    
+    // Handle custom file if spinnerVerbsFile key exists
+    const spinnerVerbsFileValue = getSpinnerVerbsFileValue(projectSettings, globalSettings);
+    
+    if (typeof spinnerVerbsFileValue === "string") {
+      const resolved = resolveFilePath(spinnerVerbsFileValue, projectSettings || "");
+      if (existsSync(resolved)) {
+        try {
+          const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
+          if (fileVerbs) {
+            return { verbs: fileVerbs, verbSetName: undefined };
           }
+        } catch (error) {
+          console.error(`Failed to parse verbs from file ${resolved}:`, error);
+          return { verbs: undefined, verbSetName: undefined };
         }
       }
     }
