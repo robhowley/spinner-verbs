@@ -40,9 +40,11 @@ export default function (pi: ExtensionAPI) {
   });
 
   let interval: ReturnType<typeof setInterval> | undefined;
+  let activeVerbs: string[] | undefined;
 
   function activate(verbs: string[], ctx: ExtensionContext) {
     clearInterval(interval);
+    activeVerbs = verbs;
     const tick = () => ctx.ui.setWorkingMessage(`${verbs[Math.floor(Math.random() * verbs.length)]}...`);
     tick();
     interval = setInterval(tick, 3000);
@@ -129,6 +131,46 @@ export default function (pi: ExtensionAPI) {
         activate(loadVerbs(choice), ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
+    },
+  });
+
+  pi.registerCommand("verb-status", {
+    description: "Show current spinner verb status",
+    handler: async (_args, ctx) => {
+      if (!interval) {
+        ctx.ui.notify("No spinner active. Use /verbs to set one.", "info");
+        return;
+      }
+      
+      const activeVerbSet = pi.getFlag("--verbs") as string;
+      
+      let currentVerbSet = "Unknown";
+      if (activeVerbSet && activeVerbSet !== "(default)") {
+        currentVerbSet = activeVerbSet;
+      } else if (activeVerbs) {
+        // Try to determine the verb set name from the verbs
+        const verbSetMap: Record<string, string> = {
+          "Yippee-ki-yay": "action-movie",
+          "double clicking": "corporate-jargon",
+          "Shunting": "doc-emrick",
+          "Taking the black": "game-of-thrones",
+          "Come on down": "game-show",
+          "One does not simply": "lord-of-the-rings",
+          "Making moves": "momentum"
+        };
+        
+        // Find a match from the first few verbs
+        for (const [verb, set] of Object.entries(verbSetMap)) {
+          if (activeVerbs.some(v => v.includes(verb))) {
+            currentVerbSet = set;
+            break;
+          }
+        }
+      }
+      
+      const verbCount = activeVerbs?.length || 0;
+      ctx.ui.notify(`Spinner active with ${verbCount} verbs from "${currentVerbSet}" set`, "info");
+      ctx.ui.notify(`Available verb sets: ${available.join(", ")}`, "info");
     },
   });
 

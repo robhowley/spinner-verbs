@@ -31,6 +31,14 @@ Change your verb list at any time during a session:
 
 Run `/verbs` with no argument to get an interactive picker. Use `random` to pick a new random theme, or `(default)` to restore the default spinner.
 
+### Checking Status with `/verb-status`
+
+Check the current spinner status at any time:
+
+```
+/verb-status
+```
+
 ### Auto-configure via `settings.json`
 
 Set your preferred theme once and forget about it. Pi checks both project-local (`.pi/settings.json`) and global (`~/.pi/agent/settings.json`) settings on session start.
