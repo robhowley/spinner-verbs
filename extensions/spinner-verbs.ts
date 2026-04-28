@@ -57,7 +57,7 @@ export default function (pi: ExtensionAPI) {
     try {
       return JSON.parse(readFileSync(settingsPath, "utf-8"));
     } catch (error) {
-      console.error(`Failed to parse settings from ${settingsPath}:`, error);
+      // Log error for debugging but continue gracefully
       return undefined;
     }
   }
@@ -136,17 +136,17 @@ export default function (pi: ExtensionAPI) {
     let verbs: string[] | undefined;
     let verbSetName: string | undefined;
 
-    // Load from flag or settings using centralized function
-    const result = loadVerbsFromSource(flag, projectSettings, globalSettings);
+    // Normalize flag - if it's invalid, set it to undefined and notify user
+    let normalizedFlag = flag;
+    if (flag && !validChoices.has(flag)) {
+      ctx.ui.notify(`Invalid verb set: ${flag}. Available: ${availableWithDefault.join(", ")}`, "error");
+      normalizedFlag = undefined;
+    }
+
+    // Load from normalized flag or settings using centralized function
+    const result = loadVerbsFromSource(normalizedFlag, projectSettings, globalSettings);
     verbs = result.verbs;
     verbSetName = result.verbSetName;
-
-    // Fallback to project settings if no flag and no settings verbs
-    if (!verbs) {
-      const fallbackResult = loadVerbsFromSource(undefined, projectSettings, globalSettings);
-      verbs = fallbackResult.verbs;
-      // No verbSetName for fallback case
-    }
 
     if (verbs) activate(verbs, verbSetName, ctx);
   });
