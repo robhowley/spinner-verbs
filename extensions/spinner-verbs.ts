@@ -153,32 +153,11 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       
-      const activeVerbSet = pi.getFlag("--verbs") as string;
-      
       let currentVerbSet = "Unknown";
       if (activeVerbSetName) {
         currentVerbSet = activeVerbSetName;
-      } else if (activeVerbSet && activeVerbSet !== "(default)") {
-        currentVerbSet = activeVerbSet;
-      } else if (activeVerbs) {
-        // Try to determine the verb set name from the verbs
-        const verbSetMap: Record<string, string> = {
-          "Yippee-ki-yay": "action-movie",
-          "double clicking": "corporate-jargon",
-          "Shunting": "doc-emrick",
-          "Taking the black": "game-of-thrones",
-          "Come on down": "game-show",
-          "One does not simply": "lord-of-the-rings",
-          "Making moves": "momentum"
-        };
-        
-        // Find a match from the first few verbs
-        for (const [verb, set] of Object.entries(verbSetMap)) {
-          if (activeVerbs.some(v => v.includes(verb))) {
-            currentVerbSet = set;
-            break;
-          }
-        }
+      } else if (pi.getFlag("--verbs") as string !== "(default)") {
+        currentVerbSet = pi.getFlag("--verbs") as string;
       }
       
       const verbCount = activeVerbs?.length || 0;
