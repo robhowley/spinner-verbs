@@ -182,8 +182,8 @@ export default function (pi: ExtensionAPI) {
       }
       
       const verbCount = activeVerbs?.length || 0;
-      ctx.ui.notify(`Spinner active with ${verbCount} verbs from "${currentVerbSet}" set`, "info");
-      ctx.ui.notify(`Available verb sets: ${available.join(", ")}`, "info");
+      const message = `Spinner active with ${verbCount} verbs from "${currentVerbSet}" set\nAvailable verb sets: ${available.join(", ")}`;
+      ctx.ui.notify(message, "info");
     },
   });
 
