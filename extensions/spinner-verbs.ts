@@ -108,7 +108,7 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    // Handle loading from settings
+    // Handle loading from settings   
     const settingsVerbs = resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
     if (settingsVerbs) {
       verbs = settingsVerbs;
@@ -116,6 +116,14 @@ export default function (pi: ExtensionAPI) {
       // Try to determine verb set name from settings
       const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
       if (settings && typeof settings.spinnerVerbs === "string") {
+        const named = settings.spinnerVerbs;
+        if (named === RANDOM) {
+          verbSetName = "random";
+        } else if (available.includes(named)) {
+          verbSetName = named;
+        }
+      }
+    } "string") {
         const named = settings.spinnerVerbs;
         if (named !== RANDOM && available.includes(named)) {
           verbSetName = named;
@@ -165,14 +173,14 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify("No spinner active. Use /verbs to set one.", "info");
         return;
       }
-      
+
       let currentVerbSet = "Unknown";
       if (activeVerbSetName) {
         currentVerbSet = activeVerbSetName;
       } else if (pi.getFlag("--verbs") as string !== DEFAULT) {
         currentVerbSet = pi.getFlag("--verbs") as string;
       }
-      
+
       const verbCount = activeVerbs?.length || 0;
       const message = `Spinner active with ${verbCount} verbs from "${currentVerbSet}" set\nAvailable verb sets: ${available.join(", ")}`;
       ctx.ui.notify(message, "info");
