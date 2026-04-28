@@ -62,50 +62,90 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  function getSpinnerVerbsValue(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): unknown {
-  // Coalesce: flag -> project settings -> global settings
-  const projectSpinnerVerbs = projectSettings ? readSettings(projectSettings)?.spinnerVerbs : undefined;
-  const globalSpinnerVerbs = globalSettings ? readSettings(globalSettings)?.spinnerVerbs : undefined;
-  
-  return source ?? projectSpinnerVerbs ?? globalSpinnerVerbs;
-}
+  type LoadVerbsResult = {
+    verbs: string[] | undefined;
+    verbSetName: string | undefined;
+  };
 
-function getSpinnerVerbsFileValue(projectSettings: string | undefined, globalSettings: string | undefined): string | undefined {
-  // Coalesce: project settings -> global settings
-  const projectSpinnerVerbsFile = projectSettings ? readSettings(projectSettings)?.spinnerVerbsFile : undefined;
-  const globalSpinnerVerbsFile = globalSettings ? readSettings(globalSettings)?.spinnerVerbsFile : undefined;
-  
-  return projectSpinnerVerbsFile ?? globalSpinnerVerbsFile;
-}
+  const EMPTY_RESULT: LoadVerbsResult = {
+    verbs: undefined,
+    verbSetName: undefined,
+  };
 
-function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
-    // Handle string source (named set or random)
-    if (typeof source === "string") {
-      if (source === RANDOM) {
-        const result = randomVerbs();
-        return { verbs: result.verbs, verbSetName: result.setName };
-      } else if (available.includes(source)) {
-        return { verbs: loadVerbs(source), verbSetName: source };
-      }
+  type SpinnerConfig = {
+    settingsPath?: string;
+    hasSpinnerVerbs: boolean;
+    hasSpinnerVerbsFile: boolean;
+    spinnerVerbs?: string;
+    spinnerVerbsFile?: string;
+  };
+
+  function readSpinnerConfig(settingsPath?: string): SpinnerConfig | undefined {
+    if (!settingsPath) return undefined;
+    const settings = readSettings(settingsPath);
+    if (!settings) return undefined;
+
+    return {
+      settingsPath,
+      hasSpinnerVerbs: Object.prototype.hasOwnProperty.call(settings, "spinnerVerbs"),
+      hasSpinnerVerbsFile: Object.prototype.hasOwnProperty.call(settings, "spinnerVerbsFile"),
+      spinnerVerbs: typeof settings.spinnerVerbs === "string" ? settings.spinnerVerbs : undefined,
+      spinnerVerbsFile: typeof settings.spinnerVerbsFile === "string" ? settings.spinnerVerbsFile : undefined,
+    };
+  }
+
+  function hasSpinnerConfig(config?: SpinnerConfig): config is SpinnerConfig {
+    return !!config && (config.hasSpinnerVerbs || config.hasSpinnerVerbsFile);
+  }
+
+  function pickSpinnerConfig(
+    source: string | undefined,
+    projectSettings: string | undefined,
+    globalSettings: string | undefined,
+  ): SpinnerConfig | undefined {
+    return [
+      typeof source === "string"
+        ? {
+            hasSpinnerVerbs: true,
+            hasSpinnerVerbsFile: false,
+            spinnerVerbs: source,
+          }
+        : undefined,
+      readSpinnerConfig(projectSettings),
+      readSpinnerConfig(globalSettings),
+    ].find(hasSpinnerConfig);
+  }
+
+  function resolveFilePath(filePath: string, settingsPath: string): string {
+    if (filePath.startsWith("~")) {
+      return join(homedir(), filePath.slice(1));
+    } else if (filePath.startsWith("/")) {
+      return filePath;
+    } else {
+      return join(dirname(settingsPath), filePath);
     }
-    
-    // Get the spinnerVerbs value from coalesced sources
-    const spinnerVerbsValue = getSpinnerVerbsValue(source, projectSettings, globalSettings);
-    
-    if (typeof spinnerVerbsValue === "string") {
-      if (spinnerVerbsValue === RANDOM) {
-        const result = randomVerbs();
-        return { verbs: result.verbs, verbSetName: result.setName };
-      } else if (available.includes(spinnerVerbsValue)) {
-        return { verbs: loadVerbs(spinnerVerbsValue), verbSetName: spinnerVerbsValue };
-      }
+  }
+
+  function loadVerbsFromConfig(config: SpinnerConfig | undefined): LoadVerbsResult {
+    if (!config) {
+      return EMPTY_RESULT;
     }
-    
-    // Handle custom file if spinnerVerbsFile key exists
-    const spinnerVerbsFileValue = getSpinnerVerbsFileValue(projectSettings, globalSettings);
-    
-    if (typeof spinnerVerbsFileValue === "string") {
-      const resolved = resolveFilePath(spinnerVerbsFileValue, projectSettings || "");
+
+    if (config.spinnerVerbs === DEFAULT) {
+      return EMPTY_RESULT;
+    }
+
+    if (config.spinnerVerbs === RANDOM) {
+      const result = randomVerbs();
+      return { verbs: result.verbs, verbSetName: result.setName };
+    }
+
+    if (config.spinnerVerbs && available.includes(config.spinnerVerbs)) {
+      return { verbs: loadVerbs(config.spinnerVerbs), verbSetName: config.spinnerVerbs };
+    }
+
+    if (config.spinnerVerbsFile && config.settingsPath) {
+      const resolved = resolveFilePath(config.spinnerVerbsFile, config.settingsPath);
       if (existsSync(resolved)) {
         try {
           const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
@@ -114,22 +154,20 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
           }
         } catch (error) {
           console.error(`Failed to parse verbs from file ${resolved}:`, error);
-          return { verbs: undefined, verbSetName: undefined };
+          return EMPTY_RESULT;
         }
       }
     }
-    
-    return { verbs: undefined, verbSetName: undefined };
+
+    return EMPTY_RESULT;
   }
 
-  function resolveFilePath(filePath: string, projectSettings: string): string {
-    if (filePath.startsWith("~")) {
-      return join(homedir(), filePath.slice(1));
-    } else if (filePath.startsWith("/")) {
-      return filePath;
-    } else {
-      return join(dirname(projectSettings), filePath);
-    }
+  function loadVerbsFromSource(
+    source: string | undefined,
+    projectSettings: string | undefined,
+    globalSettings: string | undefined,
+  ): LoadVerbsResult {
+    return loadVerbsFromConfig(pickSpinnerConfig(source, projectSettings, globalSettings));
   }
 
   pi.on("session_start", async (_event, ctx) => {
