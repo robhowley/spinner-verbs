@@ -108,7 +108,20 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    verbs ??= resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
+    // Handle loading from settings
+    const settingsVerbs = resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
+    if (settingsVerbs) {
+      verbs = settingsVerbs;
+      
+      // Try to determine verb set name from settings
+      const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
+      if (settings && typeof settings.spinnerVerbs === "string") {
+        const named = settings.spinnerVerbs;
+        if (named !== RANDOM && available.includes(named)) {
+          verbSetName = named;
+        }
+      }
+    }
 
     if (verbs) activate(verbs, verbSetName, ctx);
   });
