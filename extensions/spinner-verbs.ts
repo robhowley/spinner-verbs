@@ -110,22 +110,46 @@ export default function (pi: ExtensionAPI) {
     }
 
     // Handle loading from settings   
-    const settingsVerbs = resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
-    if (settingsVerbs) {
-      verbs = settingsVerbs;
-      
-      // Try to determine verb set name from settings
-      const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
-      if (settings && typeof settings.spinnerVerbs === "string") {
-        const named = settings.spinnerVerbs;
+    const settings = readSettings(projectSettings) ?? readSettings(globalSettings);
+    if (settings) {
+      const named = settings.spinnerVerbs;
+      if (typeof named === "string") {
         if (named === RANDOM) {
-          // For random selection, we should get the actual set name that was selected
           const result = randomVerbs();
+          verbs = result.verbs;
           verbSetName = result.setName;
         } else if (available.includes(named)) {
+          verbs = loadVerbs(named);
           verbSetName = named;
         }
       }
+      
+      // Also check for custom file if no named verb set
+      if (!verbs) {
+        const filePath = settings.spinnerVerbsFile;
+        if (typeof filePath === "string") {
+          const resolved = filePath.startsWith("~")
+            ? join(homedir(), filePath.slice(1))
+            : filePath.startsWith("/")
+            ? filePath
+            : join(dirname(projectSettings), filePath);
+          if (existsSync(resolved)) {
+            try {
+              const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
+              if (fileVerbs) {
+                verbs = fileVerbs;
+                // For custom files, we don't track a specific name
+              }
+            } catch {}
+          }
+        }
+      }
+    }
+
+    // Fallback to project settings if no flag and no settings verbs
+    if (!verbs) {
+      verbs = resolveVerbs(projectSettings);
+      // No verbSetName for fallback case
     }
 
     if (verbs) activate(verbs, verbSetName, ctx);
