@@ -41,10 +41,12 @@ export default function (pi: ExtensionAPI) {
 
   let interval: ReturnType<typeof setInterval> | undefined;
   let activeVerbs: string[] | undefined;
+  let activeVerbSetName: string | undefined;
 
-  function activate(verbs: string[], ctx: ExtensionContext) {
+  function activate(verbs: string[], verbSetName: string | undefined, ctx: ExtensionContext) {
     clearInterval(interval);
     activeVerbs = verbs;
+    activeVerbSetName = verbSetName;
     const tick = () => ctx.ui.setWorkingMessage(`${verbs[Math.floor(Math.random() * verbs.length)]}...`);
     tick();
     interval = setInterval(tick, 3000);
@@ -93,15 +95,22 @@ export default function (pi: ExtensionAPI) {
     const globalSettings = join(homedir(), ".pi", "agent", "settings.json");
 
     let verbs: string[] | undefined;
+    let verbSetName: string | undefined;
 
     if (flag && flag !== DEFAULT) {
-      if (flag === RANDOM) verbs = randomVerbs();
-      else if (available.includes(flag)) verbs = loadVerbs(flag);
+      if (flag === RANDOM) {
+        verbs = randomVerbs();
+        verbSetName = "random";
+      }
+      else if (available.includes(flag)) {
+        verbs = loadVerbs(flag);
+        verbSetName = flag;
+      }
     }
 
     verbs ??= resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
 
-    if (verbs) activate(verbs, ctx);
+    if (verbs) activate(verbs, verbSetName, ctx);
   });
 
   pi.registerCommand("verbs", {
@@ -125,10 +134,12 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage();
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
-        activate(randomVerbs(), ctx);
+        const verbs = randomVerbs();
+        activate(verbs, "random", ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
-        activate(loadVerbs(choice), ctx);
+        const verbs = loadVerbs(choice);
+        activate(verbs, choice, ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
     },
@@ -145,7 +156,9 @@ export default function (pi: ExtensionAPI) {
       const activeVerbSet = pi.getFlag("--verbs") as string;
       
       let currentVerbSet = "Unknown";
-      if (activeVerbSet && activeVerbSet !== "(default)") {
+      if (activeVerbSetName) {
+        currentVerbSet = activeVerbSetName;
+      } else if (activeVerbSet && activeVerbSet !== "(default)") {
         currentVerbSet = activeVerbSet;
       } else if (activeVerbs) {
         // Try to determine the verb set name from the verbs
