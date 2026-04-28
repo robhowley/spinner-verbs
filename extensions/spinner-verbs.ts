@@ -28,7 +28,7 @@ export default function (pi: ExtensionAPI) {
     return verbs;
   }
 
-  function randomVerbs(): { verbs: string[], setName: string } {
+  function randomVerbs(): { verbs: string[]; setName: string } {
     const name = available[Math.floor(Math.random() * available.length)];
     return { verbs: loadVerbs(name), setName: name };
   }
@@ -57,28 +57,40 @@ export default function (pi: ExtensionAPI) {
     try {
       return JSON.parse(readFileSync(settingsPath, "utf-8"));
     } catch (error) {
-      // Log error for debugging but continue gracefully
+      console.error(error);
       return undefined;
     }
   }
 
-  function getSpinnerVerbsValue(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): unknown {
-  // Coalesce: flag -> project settings -> global settings
-  const projectSpinnerVerbs = projectSettings ? readSettings(projectSettings)?.spinnerVerbs : undefined;
-  const globalSpinnerVerbs = globalSettings ? readSettings(globalSettings)?.spinnerVerbs : undefined;
-  
-  return source ?? projectSpinnerVerbs ?? globalSpinnerVerbs;
-}
+  function getSpinnerVerbsValue(
+    source: string | undefined,
+    projectSettings: string | undefined,
+    globalSettings: string | undefined
+  ): unknown {
+    // Coalesce: flag -> project settings -> global settings
+    const projectSpinnerVerbs = projectSettings ? readSettings(projectSettings)?.spinnerVerbs : undefined;
+    const globalSpinnerVerbs = globalSettings ? readSettings(globalSettings)?.spinnerVerbs : undefined;
 
-function getSpinnerVerbsFileValue(projectSettings: string | undefined, globalSettings: string | undefined): string | undefined {
-  // Coalesce: project settings -> global settings
-  const projectSpinnerVerbsFile = projectSettings ? readSettings(projectSettings)?.spinnerVerbsFile : undefined;
-  const globalSpinnerVerbsFile = globalSettings ? readSettings(globalSettings)?.spinnerVerbsFile : undefined;
-  
-  return projectSpinnerVerbsFile ?? globalSpinnerVerbsFile;
-}
+    return source ?? projectSpinnerVerbs ?? globalSpinnerVerbs;
+  }
 
-function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
+  function getSpinnerVerbsFileValue(
+    projectSettings: string | undefined,
+    globalSettings: string | undefined
+  ): string | undefined {
+    // Coalesce: project settings -> global settings
+    const projectSpinnerVerbsFile = projectSettings ? readSettings(projectSettings)?.spinnerVerbsFile : undefined;
+    if (typeof projectSpinnerVerbsFile === "string") return projectSpinnerVerbsFile;
+
+    const globalSpinnerVerbsFile = globalSettings ? readSettings(globalSettings)?.spinnerVerbsFile : undefined;
+    return typeof globalSpinnerVerbsFile === "string" ? globalSpinnerVerbsFile : undefined;
+  }
+
+  function loadVerbsFromSource(
+    source: string | undefined,
+    projectSettings: string | undefined,
+    globalSettings: string | undefined
+  ): { verbs: string[] | undefined; verbSetName: string | undefined } {
     // Handle string source (named set or random)
     if (typeof source === "string") {
       if (source === RANDOM) {
@@ -88,10 +100,10 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
         return { verbs: loadVerbs(source), verbSetName: source };
       }
     }
-    
+
     // Get the spinnerVerbs value from coalesced sources
     const spinnerVerbsValue = getSpinnerVerbsValue(source, projectSettings, globalSettings);
-    
+
     if (typeof spinnerVerbsValue === "string") {
       if (spinnerVerbsValue === RANDOM) {
         const result = randomVerbs();
@@ -100,10 +112,10 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
         return { verbs: loadVerbs(spinnerVerbsValue), verbSetName: spinnerVerbsValue };
       }
     }
-    
+
     // Handle custom file if spinnerVerbsFile key exists
     const spinnerVerbsFileValue = getSpinnerVerbsFileValue(projectSettings, globalSettings);
-    
+
     if (typeof spinnerVerbsFileValue === "string") {
       const resolved = resolveFilePath(spinnerVerbsFileValue, projectSettings || "");
       if (existsSync(resolved)) {
@@ -118,7 +130,7 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
         }
       }
     }
-    
+
     return { verbs: undefined, verbSetName: undefined };
   }
 
@@ -133,12 +145,9 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    const flag = pi.getFlag("verbs") as string;
+    const flag = pi.getFlag("verbs") as string | undefined;
     const projectSettings = join(ctx.cwd, ".pi", "settings.json");
     const globalSettings = join(homedir(), ".pi", "agent", "settings.json");
-
-    let verbs: string[] | undefined;
-    let verbSetName: string | undefined;
 
     // Normalize flag - if it's invalid, set it to undefined and notify user
     let normalizedFlag = flag;
@@ -148,9 +157,7 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
     }
 
     // Load from normalized flag or settings using centralized function
-    const result = loadVerbsFromSource(normalizedFlag, projectSettings, globalSettings);
-    verbs = result.verbs;
-    verbSetName = result.verbSetName;
+    const { verbs, verbSetName } = loadVerbsFromSource(normalizedFlag, projectSettings, globalSettings);
 
     if (verbs) activate(verbs, verbSetName, ctx);
   });
@@ -158,9 +165,7 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
   pi.registerCommand("verbs", {
     description: "Choose spinner verb list",
     getArgumentCompletions: (prefix: string) => {
-      const matches = availableWithDefault
-        .filter((v) => v.startsWith(prefix))
-        .map((v) => ({ value: v, label: v }));
+      const matches = availableWithDefault.filter((v) => v.startsWith(prefix)).map((v) => ({ value: v, label: v }));
       return matches.length > 0 ? matches : null;
     },
     handler: async (args, ctx) => {
@@ -169,7 +174,7 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
         ctx.ui.notify(`Unknown verb list: ${arg}. Available: ${availableWithDefault.join(", ")}`, "error");
         return;
       }
-      const choice = arg || await ctx.ui.select("Spinner verbs:", availableWithDefault);
+      const choice = arg || (await ctx.ui.select("Spinner verbs:", availableWithDefault));
       if (!choice) return;
       if (choice === DEFAULT) {
         clearInterval(interval);
@@ -177,11 +182,19 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
         const result = loadVerbsFromSource(choice, undefined, undefined);
+        if (!result.verbs) {
+          ctx.ui.notify("Failed to load random spinner verbs", "error");
+          return;
+        }
         activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
         // For direct verb selection, we don't have settings context so we'll use undefined
         const result = loadVerbsFromSource(choice, undefined, undefined);
+        if (!result.verbs) {
+          ctx.ui.notify(`Failed to load spinner: ${choice}`, "error");
+          return;
+        }
         activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
@@ -197,10 +210,11 @@ function loadVerbsFromSource(source: string | undefined, projectSettings: string
       }
 
       let currentVerbSet = "Unknown";
+      const flagVerbSet = pi.getFlag("verbs") as string | undefined;
       if (activeVerbSetName) {
         currentVerbSet = activeVerbSetName;
-      } else if (pi.getFlag("--verbs") as string !== DEFAULT) {
-        currentVerbSet = pi.getFlag("--verbs") as string;
+      } else if (flagVerbSet && flagVerbSet !== DEFAULT) {
+        currentVerbSet = flagVerbSet;
       }
 
       const verbCount = activeVerbs?.length || 0;
