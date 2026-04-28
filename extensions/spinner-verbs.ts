@@ -185,12 +185,12 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage();
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
-        const result = randomVerbs();
-        activate(result.verbs, result.setName, ctx);
+        const result = loadVerbsFromSource(choice, "", "");
+        activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
-        const verbs = loadVerbs(choice);
-        activate(verbs, choice, ctx);
+        const result = loadVerbsFromSource(choice, "", "");
+        activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
     },
