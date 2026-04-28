@@ -62,37 +62,6 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  function resolveVerbs(settingsPath: string): string[] | undefined {
-    const settings = readSettings(settingsPath);
-    if (!settings) return undefined;
-
-    const named = settings.spinnerVerbs;
-    if (typeof named === "string") {
-      if (named === RANDOM) return randomVerbs();
-      if (available.includes(named)) return loadVerbs(named);
-    }
-
-    const filePath = settings.spinnerVerbsFile;
-    if (typeof filePath === "string") {
-      const resolved = filePath.startsWith("~")
-        ? join(homedir(), filePath.slice(1))
-        : filePath.startsWith("/")
-        ? filePath
-        : join(dirname(settingsPath), filePath);
-      if (existsSync(resolved)) {
-        try {
-          const verbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
-          if (verbs) return verbs;
-        } catch (error) {
-          console.error(`Failed to parse verbs from file ${resolved}:`, error);
-          return undefined;
-        }
-      }
-    }
-
-    return undefined;
-  }
-
   function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
     // Handle string source (named set or random)
     if (typeof source === "string") {
