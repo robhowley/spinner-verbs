@@ -156,7 +156,7 @@ export default function (pi: ExtensionAPI) {
       let currentVerbSet = "Unknown";
       if (activeVerbSetName) {
         currentVerbSet = activeVerbSetName;
-      } else if (pi.getFlag("--verbs") as string !== "(default)") {
+      } else if (pi.getFlag("--verbs") as string !== DEFAULT) {
         currentVerbSet = pi.getFlag("--verbs") as string;
       }
       
