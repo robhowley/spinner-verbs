@@ -100,7 +100,8 @@ export default function (pi: ExtensionAPI) {
     if (flag && flag !== DEFAULT) {
       if (flag === RANDOM) {
         verbs = randomVerbs();
-        verbSetName = "random";
+        // For random selection, don't set verbSetName so it shows as "Unknown" in status
+        // The actual set will be determined when randomVerbs() is called
       }
       else if (available.includes(flag)) {
         verbs = loadVerbs(flag);
@@ -118,7 +119,7 @@ export default function (pi: ExtensionAPI) {
       if (settings && typeof settings.spinnerVerbs === "string") {
         const named = settings.spinnerVerbs;
         if (named === RANDOM) {
-          verbSetName = "random";
+          // For random selection, don't set verbSetName so it shows as "Unknown" in status
         } else if (available.includes(named)) {
           verbSetName = named;
         }
