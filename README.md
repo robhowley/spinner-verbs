@@ -33,7 +33,7 @@ Run `/verbs` with no argument to get an interactive picker. Use `random` to pick
 
 ### Checking Status with `/verb-status`
 
-Check the current spinner status at any time:
+Check the current session spinner settings at any time:
 
 ```
 /verb-status
