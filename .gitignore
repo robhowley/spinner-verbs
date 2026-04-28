@@ -2,3 +2,5 @@
 .claude
 .DS_Store
 .pi
+.dev
+node_modules

@@ -28,9 +28,9 @@ export default function (pi: ExtensionAPI) {
     return verbs;
   }
 
-  function randomVerbs(): string[] {
+  function randomVerbs(): { verbs: string[], setName: string } {
     const name = available[Math.floor(Math.random() * available.length)];
-    return loadVerbs(name);
+    return { verbs: loadVerbs(name), setName: name };
   }
 
   pi.registerFlag("verbs", {
@@ -40,9 +40,13 @@ export default function (pi: ExtensionAPI) {
   });
 
   let interval: ReturnType<typeof setInterval> | undefined;
+  let activeVerbs: string[] | undefined;
+  let activeVerbSetName: string | undefined;
 
-  function activate(verbs: string[], ctx: ExtensionContext) {
+  function activate(verbs: string[], verbSetName: string | undefined, ctx: ExtensionContext) {
     clearInterval(interval);
+    activeVerbs = verbs;
+    activeVerbSetName = verbSetName;
     const tick = () => ctx.ui.setWorkingMessage(`${verbs[Math.floor(Math.random() * verbs.length)]}...`);
     tick();
     interval = setInterval(tick, 3000);
@@ -52,54 +56,99 @@ export default function (pi: ExtensionAPI) {
     if (!existsSync(settingsPath)) return undefined;
     try {
       return JSON.parse(readFileSync(settingsPath, "utf-8"));
-    } catch {
+    } catch (error) {
+      // Log error for debugging but continue gracefully
       return undefined;
     }
   }
 
-  function resolveVerbs(settingsPath: string): string[] | undefined {
-    const settings = readSettings(settingsPath);
-    if (!settings) return undefined;
-
-    const named = settings.spinnerVerbs;
-    if (typeof named === "string") {
-      if (named === RANDOM) return randomVerbs();
-      if (available.includes(named)) return loadVerbs(named);
-    }
-
-    const filePath = settings.spinnerVerbsFile;
-    if (typeof filePath === "string") {
-      const resolved = filePath.startsWith("~")
-        ? join(homedir(), filePath.slice(1))
-        : filePath.startsWith("/")
-        ? filePath
-        : join(dirname(settingsPath), filePath);
-      if (existsSync(resolved)) {
-        try {
-          const verbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
-          if (verbs) return verbs;
-        } catch {}
+  function loadVerbsFromSource(source: string | undefined, projectSettings: string | undefined, globalSettings: string | undefined): { verbs: string[], verbSetName: string | undefined } {
+    // Handle string source (named set or random)
+    if (typeof source === "string") {
+      if (source === RANDOM) {
+        const result = randomVerbs();
+        return { verbs: result.verbs, verbSetName: result.setName };
+      } else if (available.includes(source)) {
+        return { verbs: loadVerbs(source), verbSetName: source };
       }
     }
+    
+    // Handle settings-based loading
+    let settings: Record<string, unknown> | undefined;
+    
+    // Try project settings first
+    if (projectSettings) {
+      settings = readSettings(projectSettings);
+    }
+    
+    // If no project settings, try global settings
+    if (!settings && globalSettings) {
+      settings = readSettings(globalSettings);
+    }
+    
+    if (settings) {
+      const named = settings.spinnerVerbs;
+      if (typeof named === "string") {
+        if (named === RANDOM) {
+          const result = randomVerbs();
+          return { verbs: result.verbs, verbSetName: result.setName };
+        } else if (available.includes(named)) {
+          return { verbs: loadVerbs(named), verbSetName: named };
+        }
+      }
+      
+      // Handle custom file
+      const filePath = settings.spinnerVerbsFile;
+      if (typeof filePath === "string") {
+        const resolved = resolveFilePath(filePath, projectSettings || "");
+        if (existsSync(resolved)) {
+          try {
+            const fileVerbs = parseVerbsData(JSON.parse(readFileSync(resolved, "utf-8")));
+            if (fileVerbs) {
+              return { verbs: fileVerbs, verbSetName: undefined };
+            }
+          } catch (error) {
+            console.error(`Failed to parse verbs from file ${resolved}:`, error);
+            return { verbs: undefined, verbSetName: undefined };
+          }
+        }
+      }
+    }
+    
+    return { verbs: undefined, verbSetName: undefined };
+  }
 
-    return undefined;
+  function resolveFilePath(filePath: string, projectSettings: string): string {
+    if (filePath.startsWith("~")) {
+      return join(homedir(), filePath.slice(1));
+    } else if (filePath.startsWith("/")) {
+      return filePath;
+    } else {
+      return join(dirname(projectSettings), filePath);
+    }
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    const flag = pi.getFlag("--verbs") as string;
+    const flag = pi.getFlag("verbs") as string;
     const projectSettings = join(ctx.cwd, ".pi", "settings.json");
     const globalSettings = join(homedir(), ".pi", "agent", "settings.json");
 
     let verbs: string[] | undefined;
+    let verbSetName: string | undefined;
 
-    if (flag && flag !== DEFAULT) {
-      if (flag === RANDOM) verbs = randomVerbs();
-      else if (available.includes(flag)) verbs = loadVerbs(flag);
+    // Normalize flag - if it's invalid, set it to undefined and notify user
+    let normalizedFlag = flag;
+    if (flag && !validChoices.has(flag)) {
+      ctx.ui.notify(`Invalid verb set: ${flag}. Available: ${availableWithDefault.join(", ")}`, "error");
+      normalizedFlag = undefined;
     }
 
-    verbs ??= resolveVerbs(projectSettings) ?? resolveVerbs(globalSettings);
+    // Load from normalized flag or settings using centralized function
+    const result = loadVerbsFromSource(normalizedFlag, projectSettings, globalSettings);
+    verbs = result.verbs;
+    verbSetName = result.verbSetName;
 
-    if (verbs) activate(verbs, ctx);
+    if (verbs) activate(verbs, verbSetName, ctx);
   });
 
   pi.registerCommand("verbs", {
@@ -123,12 +172,36 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setWorkingMessage();
         ctx.ui.notify("Restored default spinner", "info");
       } else if (choice === RANDOM) {
-        activate(randomVerbs(), ctx);
+        const result = loadVerbsFromSource(choice, undefined, undefined);
+        activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify("Spinner: random", "info");
       } else {
-        activate(loadVerbs(choice), ctx);
+        // For direct verb selection, we don't have settings context so we'll use undefined
+        const result = loadVerbsFromSource(choice, undefined, undefined);
+        activate(result.verbs, result.verbSetName, ctx);
         ctx.ui.notify(`Spinner: ${choice}`, "info");
       }
+    },
+  });
+
+  pi.registerCommand("verb-status", {
+    description: "Show current spinner verb status",
+    handler: async (_args, ctx) => {
+      if (!interval) {
+        ctx.ui.notify("No spinner active. Use /verbs to set one.", "info");
+        return;
+      }
+
+      let currentVerbSet = "Unknown";
+      if (activeVerbSetName) {
+        currentVerbSet = activeVerbSetName;
+      } else if (pi.getFlag("--verbs") as string !== DEFAULT) {
+        currentVerbSet = pi.getFlag("--verbs") as string;
+      }
+
+      const verbCount = activeVerbs?.length || 0;
+      const message = `Spinner active with ${verbCount} verbs from "${currentVerbSet}" set\nAvailable verb sets: ${available.join(", ")}`;
+      ctx.ui.notify(message, "info");
     },
   });
 
