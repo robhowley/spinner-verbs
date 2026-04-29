@@ -28,5 +28,21 @@
     "extensions": [
       "./extensions"
     ]
+  },
+  "scripts": {
+    "lint": "eslint extensions",
+    "lint:fix": "eslint extensions --fix",
+    "format:check": "prettier --check extensions",
+    "format": "prettier --write extensions",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.68.0",
+    "@sinclair/typebox": "^0.34.49",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.59.0"
   }
 }
