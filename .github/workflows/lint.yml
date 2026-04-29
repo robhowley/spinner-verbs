@@ -1,0 +1,29 @@
+name: Lint and Format
+
+on:
+  push:
+    branches: [main, lint]
+  pull_request:
+    branches: [main, lint]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run linting
+        run: pnpm lint
+
+      - name: Run format check
+        run: pnpm format:check
