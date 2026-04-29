@@ -100,7 +100,7 @@ export default function (pi: ExtensionAPI) {
   function pickSpinnerConfig(
     source: string | undefined,
     projectSettings: string | undefined,
-    globalSettings: string | undefined,
+    globalSettings: string | undefined
   ): SpinnerConfig | undefined {
     return [
       typeof source === "string"
@@ -164,7 +164,7 @@ export default function (pi: ExtensionAPI) {
   function loadVerbsFromSource(
     source: string | undefined,
     projectSettings: string | undefined,
-    globalSettings: string | undefined,
+    globalSettings: string | undefined
   ): LoadVerbsResult {
     return loadVerbsFromConfig(pickSpinnerConfig(source, projectSettings, globalSettings));
   }
