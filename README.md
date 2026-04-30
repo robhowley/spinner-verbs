@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This project has been migrated to the [`pi-userland`](https://github.com/robhowley/pi-userland) monorepo. Package versions are managed there and published under [`@robhowley/pi-spinner-verbs`](https://www.npmjs.com/package/@robhowley/pi-spinner-verbs)`. This standalone repo is deprecated.
+
 # Spinner Verbs
 
 > "Thinking..." is the most boring thing a genius could say.
